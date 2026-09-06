@@ -63,7 +63,17 @@ OPENAI_MODEL=gpt-5-mini
 VKUSVILL_MCP_URL=https://mcp.vkusvill.ru/mcp
 VKUSVILL_MCP_SERVER_LABEL=vkusvill
 VKUSVILL_ALLOWED_MCP_TOOLS=vkusvill_products_search,vkusvill_products_discount,vkusvill_product_details,vkusvill_product_analogs,vkusvill_cart_link_create
+TELEGRAM_CONNECT_TIMEOUT=30
+TELEGRAM_READ_TIMEOUT=30
+TELEGRAM_WRITE_TIMEOUT=30
+TELEGRAM_POOL_TIMEOUT=5
+TELEGRAM_PROXY_URL=
 ```
+
+Если локальный запуск падает на `telegram.error.TimedOut` во время `get_me()`,
+проверьте доступ к Telegram Bot API с этой машины. Для локального proxy можно
+задать, например, `TELEGRAM_PROXY_URL=socks5://127.0.0.1:1080` или HTTP proxy URL,
+который доступен в вашей среде.
 
 ## Запуск локально
 

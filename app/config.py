@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 VKUSVILL_MCP_URL = "https://mcp.vkusvill.ru/mcp"
 VKUSVILL_MCP_SERVER_LABEL = "vkusvill"
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
+DEFAULT_TELEGRAM_TIMEOUT_SECONDS = 30.0
+DEFAULT_TELEGRAM_POOL_TIMEOUT_SECONDS = 5.0
 DEFAULT_ALLOWED_MCP_TOOLS = (
     "vkusvill_products_search",
     "vkusvill_products_discount",
@@ -24,6 +26,11 @@ class Settings:
     vkusvill_mcp_url: str = VKUSVILL_MCP_URL
     vkusvill_mcp_server_label: str = VKUSVILL_MCP_SERVER_LABEL
     allowed_mcp_tools: tuple[str, ...] = field(default_factory=lambda: DEFAULT_ALLOWED_MCP_TOOLS)
+    telegram_connect_timeout: float = DEFAULT_TELEGRAM_TIMEOUT_SECONDS
+    telegram_read_timeout: float = DEFAULT_TELEGRAM_TIMEOUT_SECONDS
+    telegram_write_timeout: float = DEFAULT_TELEGRAM_TIMEOUT_SECONDS
+    telegram_pool_timeout: float = DEFAULT_TELEGRAM_POOL_TIMEOUT_SECONDS
+    telegram_proxy_url: str | None = None
 
     def mcp_tool_config(self) -> dict[str, Any]:
         return {
@@ -46,6 +53,18 @@ def _split_tools(raw_tools: str | None) -> tuple[str, ...]:
     return tools or DEFAULT_ALLOWED_MCP_TOOLS
 
 
+def _get_float_env(name: str, default: float) -> float:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return default
+
+    try:
+        return float(raw_value)
+    except ValueError as exc:
+        msg = f"{name} must be a number"
+        raise RuntimeError(msg) from exc
+
+
 def load_settings() -> Settings:
     load_dotenv()
     return Settings(
@@ -55,6 +74,19 @@ def load_settings() -> Settings:
         vkusvill_mcp_url=os.getenv("VKUSVILL_MCP_URL", VKUSVILL_MCP_URL),
         vkusvill_mcp_server_label=os.getenv("VKUSVILL_MCP_SERVER_LABEL", VKUSVILL_MCP_SERVER_LABEL),
         allowed_mcp_tools=_split_tools(os.getenv("VKUSVILL_ALLOWED_MCP_TOOLS")),
+        telegram_connect_timeout=_get_float_env(
+            "TELEGRAM_CONNECT_TIMEOUT", DEFAULT_TELEGRAM_TIMEOUT_SECONDS
+        ),
+        telegram_read_timeout=_get_float_env(
+            "TELEGRAM_READ_TIMEOUT", DEFAULT_TELEGRAM_TIMEOUT_SECONDS
+        ),
+        telegram_write_timeout=_get_float_env(
+            "TELEGRAM_WRITE_TIMEOUT", DEFAULT_TELEGRAM_TIMEOUT_SECONDS
+        ),
+        telegram_pool_timeout=_get_float_env(
+            "TELEGRAM_POOL_TIMEOUT", DEFAULT_TELEGRAM_POOL_TIMEOUT_SECONDS
+        ),
+        telegram_proxy_url=os.getenv("TELEGRAM_PROXY_URL") or None,
     )
 
 

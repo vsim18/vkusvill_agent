@@ -10,9 +10,10 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.request import HTTPXRequest
 
 from app.agent import VkusVillAgent, VkusVillAgentError
-from app.config import load_settings, validate_runtime_settings
+from app.config import Settings, load_settings, validate_runtime_settings
 
 logger = logging.getLogger(__name__)
 START_MESSAGE = "Привет! Я помогу собрать корзину во ВкусВилле.\nНапиши, что нужно купить."
@@ -50,10 +51,25 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     logger.exception("Telegram error while processing update %r", update, exc_info=context.error)
 
 
+def _build_telegram_request(settings: Settings) -> HTTPXRequest:
+    return HTTPXRequest(
+        connect_timeout=settings.telegram_connect_timeout,
+        read_timeout=settings.telegram_read_timeout,
+        write_timeout=settings.telegram_write_timeout,
+        pool_timeout=settings.telegram_pool_timeout,
+        proxy=settings.telegram_proxy_url,
+    )
+
+
 def build_application(agent: VkusVillAgent | None = None) -> Application:
     settings = load_settings()
     validate_runtime_settings(settings)
-    application = ApplicationBuilder().token(settings.telegram_bot_token).build()
+    application = (
+        ApplicationBuilder()
+        .token(settings.telegram_bot_token)
+        .request(_build_telegram_request(settings))
+        .build()
+    )
     application.bot_data["agent"] = agent or VkusVillAgent(settings)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
