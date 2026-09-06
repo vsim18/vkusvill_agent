@@ -1,0 +1,1 @@
+"""VkusVill Telegram shopping agent."""
