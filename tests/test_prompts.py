@@ -19,3 +19,16 @@ def test_system_prompt_handles_mcp_rate_limits() -> None:
     assert "rate limit" in SYSTEM_PROMPT
     assert "Попробуйте повторить запрос через несколько минут" in SYSTEM_PROMPT
     assert "не продолжай уточнять" in SYSTEM_PROMPT
+
+
+def test_system_prompt_supports_recipe_requests() -> None:
+    assert "режиме рецепта" in SYSTEM_PROMPT
+    assert "vkusvill_recipes" in SYSTEM_PROMPT
+    assert "ингредиенты" in SYSTEM_PROMPT
+    assert "соль, перец, воду" in SYSTEM_PROMPT
+
+
+def test_system_prompt_does_not_require_full_recipe_for_dish_name() -> None:
+    assert "не проси" in SYSTEM_PROMPT
+    assert "прислать сам рецепт" in SYSTEM_PROMPT
+    assert "для названия блюда всегда сначала используй vkusvill_recipes" in SYSTEM_PROMPT

@@ -4,6 +4,10 @@
 
 Пользователь пишет запрос естественным языком, бот через OpenAI Responses API подключает официальный remote MCP ВкусВилла, ищет реальные товары, выбирает подходящие позиции и возвращает ссылку на корзину. Бот не оформляет и не оплачивает заказ.
 
+Также можно отправить рецепт или название блюда. Бот выделит ингредиенты,
+найдёт товары во ВкусВилле и соберёт корзину по рецепту.
+Сам рецепт писать не обязательно: достаточно названия блюда.
+
 ## Архитектура
 
 ```text
@@ -62,7 +66,7 @@ OPENAI_MODEL=gpt-5-mini
 ```text
 VKUSVILL_MCP_URL=https://mcp.vkusvill.ru/mcp
 VKUSVILL_MCP_SERVER_LABEL=vkusvill
-VKUSVILL_ALLOWED_MCP_TOOLS=vkusvill_products_search,vkusvill_products_discount,vkusvill_product_details,vkusvill_product_analogs,vkusvill_cart_link_create
+VKUSVILL_ALLOWED_MCP_TOOLS=vkusvill_products_search,vkusvill_products_discount,vkusvill_product_details,vkusvill_product_analogs,vkusvill_recipes,vkusvill_cart_link_create
 TELEGRAM_CONNECT_TIMEOUT=30
 TELEGRAM_READ_TIMEOUT=30
 TELEGRAM_WRITE_TIMEOUT=30
@@ -109,6 +113,14 @@ docker compose up -d
 Старайся выбирать товары со скидкой.
 ```
 
+Пример рецепта:
+
+```text
+Собери корзину для сырников на 2 порции
+```
+
+Можно также прислать полный рецепт, если нужен конкретный состав.
+
 ## Ограничения
 
 - Бот только создаёт ссылку на корзину.
@@ -121,7 +133,7 @@ docker compose up -d
 
 Официальная страница MCP: <https://mcp.vkusvill.ru/mcp>.
 
-Контракт проверен 2026-09-06. На странице указаны tools:
+Контракт проверен 2026-09-07. На странице указаны tools:
 
 - `vkusvill_products_search`: поиск товаров по текстовому запросу. Возвращает `id`, `xml_id`, описание, цену, рейтинг, состав, КБЖУ и фото. Поддерживает `mode: full|short|custom`, `fields`, `sort: popularity|rating|price_asc|price_desc|new`, `page`; limit фиксирован 10 на страницу.
 - `vkusvill_products_discount`: поиск акционных товаров по текстовому запросу. Возвращает товарные данные. Поддерживает `sort` и `page`; limit фиксирован 10 на страницу.
@@ -132,7 +144,8 @@ docker compose up -d
 - `vkusvill_recipes`: поиск рецептов.
 - `vkusvill_shops`: поиск магазинов.
 
-В приложении разрешены только минимально необходимые tools: поиск, скидки, детали, аналоги и создание ссылки на корзину.
+В приложении разрешены только минимально необходимые tools: поиск, скидки, детали,
+аналоги, поиск рецептов и создание ссылки на корзину.
 
 OpenAI remote MCP tool используется через Responses API с конфигурацией:
 
@@ -146,6 +159,7 @@ OpenAI remote MCP tool используется через Responses API с ко
         "vkusvill_products_discount",
         "vkusvill_product_details",
         "vkusvill_product_analogs",
+        "vkusvill_recipes",
         "vkusvill_cart_link_create",
     ],
     "require_approval": "never",

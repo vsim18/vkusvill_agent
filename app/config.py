@@ -14,6 +14,7 @@ DEFAULT_ALLOWED_MCP_TOOLS = (
     "vkusvill_products_discount",
     "vkusvill_product_details",
     "vkusvill_product_analogs",
+    "vkusvill_recipes",
     "vkusvill_cart_link_create",
 )
 
