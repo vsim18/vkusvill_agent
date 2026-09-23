@@ -32,3 +32,11 @@ def test_system_prompt_does_not_require_full_recipe_for_dish_name() -> None:
     assert "не проси" in SYSTEM_PROMPT
     assert "прислать сам рецепт" in SYSTEM_PROMPT
     assert "для названия блюда всегда сначала используй vkusvill_recipes" in SYSTEM_PROMPT
+
+
+def test_system_prompt_requires_tbank_queries_from_same_products() -> None:
+    assert "T-Bank search queries" in SYSTEM_PROMPT
+    assert "того же самого" in SYSTEM_PROMPT
+    assert "не готовая корзина" in SYSTEM_PROMPT
+    assert "Общий поисковый список" in SYSTEM_PROMPT
+    assert "Отдельные поисковые запросы" in SYSTEM_PROMPT
