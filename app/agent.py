@@ -35,8 +35,8 @@ class VkusVillAgent:
                 model=self._settings.openai_model,
                 instructions=SYSTEM_PROMPT,
                 input=text,
-                tools=[self._settings.mcp_tool_config()],
-                max_tool_calls=25,
+                tools=self._settings.mcp_tools(),
+                max_tool_calls=50,
             )
         except APITimeoutError as exc:
             logger.warning("OpenAI request timed out: %s", exc.__class__.__name__)

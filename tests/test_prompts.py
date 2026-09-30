@@ -34,9 +34,39 @@ def test_system_prompt_does_not_require_full_recipe_for_dish_name() -> None:
     assert "для названия блюда всегда сначала используй vkusvill_recipes" in SYSTEM_PROMPT
 
 
-def test_system_prompt_requires_tbank_queries_from_same_products() -> None:
-    assert "T-Bank search queries" in SYSTEM_PROMPT
-    assert "того же самого" in SYSTEM_PROMPT
-    assert "не готовая корзина" in SYSTEM_PROMPT
-    assert "Общий поисковый список" in SYSTEM_PROMPT
-    assert "Отдельные поисковые запросы" in SYSTEM_PROMPT
+def test_system_prompt_requires_tbank_cart_transfer() -> None:
+    assert "Перенос корзины в Т-Банк" in SYSTEM_PROMPT
+    assert "тот же самый набор" in SYSTEM_PROMPT
+    assert "🛒 Корзина ВкусВилла в Т-Банке" in SYSTEM_PROMPT
+    assert "grocery_stores" in SYSTEM_PROMPT
+    assert "grocery_search" in SYSTEM_PROMPT
+    assert "grocery_add_to_cart" in SYSTEM_PROMPT
+    assert "grocery_cart" in SYSTEM_PROMPT
+    assert "Не сопоставлено" in SYSTEM_PROMPT
+
+
+def test_system_prompt_requires_confident_matching_only() -> None:
+    assert "однозначные совпадения" in SYSTEM_PROMPT
+    assert "равновероятных" in SYSTEM_PROMPT
+    assert "НЕ добавляй" in SYSTEM_PROMPT
+
+
+def test_system_prompt_forbids_checkout() -> None:
+    assert "Никогда не вызывай grocery_checkout" in SYSTEM_PROMPT
+    assert "Не вызывай grocery_checkout" in SYSTEM_PROMPT
+    assert "Не оплачивай заказ" in SYSTEM_PROMPT
+
+
+def test_system_prompt_drops_legacy_tbank_search_queries() -> None:
+    assert "T-Bank search queries" not in SYSTEM_PROMPT
+    assert "🏦 Для ВкусВилла в Т-Банке" not in SYSTEM_PROMPT
+    assert "Нажми кнопку ниже" not in SYSTEM_PROMPT
+    assert "search_query" not in SYSTEM_PROMPT
+    assert "не готовая корзина" not in SYSTEM_PROMPT
+
+
+def test_system_prompt_requires_full_product_names() -> None:
+    assert "ПОЛНЫЕ" in SYSTEM_PROMPT
+    assert "Яйцо куриное высшей категории СВ, 10 шт" in SYSTEM_PROMPT
+    assert "яйца" in SYSTEM_PROMPT.lower()
+    assert "Молоко 3,2% «Экомилк» 930 мл" in SYSTEM_PROMPT

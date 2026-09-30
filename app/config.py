@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 VKUSVILL_MCP_URL = "https://mcp.vkusvill.ru/mcp"
 VKUSVILL_MCP_SERVER_LABEL = "vkusvill"
-DEFAULT_OPENAI_MODEL = "gpt-5-luna"
+TBANK_MCP_SERVER_LABEL = "tbank"
+DEFAULT_OPENAI_MODEL = "gpt-6-luna"
 DEFAULT_TELEGRAM_TIMEOUT_SECONDS = 30.0
 DEFAULT_TELEGRAM_POOL_TIMEOUT_SECONDS = 5.0
 DEFAULT_ALLOWED_MCP_TOOLS = (
@@ -16,6 +17,19 @@ DEFAULT_ALLOWED_MCP_TOOLS = (
     "vkusvill_product_analogs",
     "vkusvill_recipes",
     "vkusvill_cart_link_create",
+)
+# Grocery-only subset of tbank-mcp tools. Checkout / order management and all
+# banking tools stay out on purpose: the bot may fill a cart, never place or
+# pay for an order.
+DEFAULT_TBANK_ALLOWED_TOOLS = (
+    "grocery_stores",
+    "grocery_search",
+    "grocery_plan_order",
+    "grocery_rank",
+    "grocery_good_info",
+    "grocery_add_to_cart",
+    "grocery_set_cart",
+    "grocery_cart",
 )
 
 
@@ -27,6 +41,11 @@ class Settings:
     vkusvill_mcp_url: str = VKUSVILL_MCP_URL
     vkusvill_mcp_server_label: str = VKUSVILL_MCP_SERVER_LABEL
     allowed_mcp_tools: tuple[str, ...] = field(default_factory=lambda: DEFAULT_ALLOWED_MCP_TOOLS)
+    tbank_tunnel_id: str | None = None
+    tbank_mcp_server_label: str = TBANK_MCP_SERVER_LABEL
+    tbank_allowed_mcp_tools: tuple[str, ...] = field(
+        default_factory=lambda: DEFAULT_TBANK_ALLOWED_TOOLS
+    )
     telegram_connect_timeout: float = DEFAULT_TELEGRAM_TIMEOUT_SECONDS
     telegram_read_timeout: float = DEFAULT_TELEGRAM_TIMEOUT_SECONDS
     telegram_write_timeout: float = DEFAULT_TELEGRAM_TIMEOUT_SECONDS
@@ -44,6 +63,30 @@ class Settings:
                 "Official VkusVill MCP server for product search and cart link creation."
             ),
         }
+
+    def tbank_mcp_tool_config(self) -> dict[str, Any] | None:
+        """Second MCP tool for the local tbank-mcp stdio server reached via
+        OpenAI Secure MCP Tunnel. Returns None when TBANK_TUNNEL_ID is unset."""
+        if not self.tbank_tunnel_id:
+            return None
+        return {
+            "type": "mcp",
+            "server_label": self.tbank_mcp_server_label,
+            "tunnel_id": self.tbank_tunnel_id,
+            "allowed_tools": list(self.tbank_allowed_mcp_tools),
+            "require_approval": "never",
+            "server_description": (
+                "Local tbank-mcp grocery tools: find a T-Bank store, search products "
+                "and fill a T-Bank cart. Checkout is not allowed."
+            ),
+        }
+
+    def mcp_tools(self) -> list[dict[str, Any]]:
+        tools: list[dict[str, Any]] = [self.mcp_tool_config()]
+        tbank_tool = self.tbank_mcp_tool_config()
+        if tbank_tool is not None:
+            tools.append(tbank_tool)
+        return tools
 
 
 def _split_tools(raw_tools: str | None) -> tuple[str, ...]:
@@ -75,6 +118,7 @@ def load_settings() -> Settings:
         vkusvill_mcp_url=os.getenv("VKUSVILL_MCP_URL", VKUSVILL_MCP_URL),
         vkusvill_mcp_server_label=os.getenv("VKUSVILL_MCP_SERVER_LABEL", VKUSVILL_MCP_SERVER_LABEL),
         allowed_mcp_tools=_split_tools(os.getenv("VKUSVILL_ALLOWED_MCP_TOOLS")),
+        tbank_tunnel_id=os.getenv("TBANK_TUNNEL_ID", "").strip() or None,
         telegram_connect_timeout=_get_float_env(
             "TELEGRAM_CONNECT_TIMEOUT", DEFAULT_TELEGRAM_TIMEOUT_SECONDS
         ),

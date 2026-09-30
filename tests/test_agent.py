@@ -34,7 +34,30 @@ async def test_agent_calls_responses_api_with_mcp_tool() -> None:
     assert call["model"] == "test-model"
     assert call["instructions"] == SYSTEM_PROMPT
     assert call["input"] == "молоко 2 л"
-    assert call["tools"] == [settings.mcp_tool_config()]
+    assert call["tools"] == settings.mcp_tools()
+    assert len(call["tools"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_agent_includes_tbank_mcp_tool_when_tunnel_configured() -> None:
+    responses = FakeResponses(SimpleNamespace(output_text="Корзина готова."))
+    settings = Settings(
+        openai_api_key="key",
+        telegram_bot_token="token",
+        openai_model="test-model",
+        tbank_tunnel_id="tunnel_xyz",
+    )
+    agent = VkusVillAgent(settings, responses_client=responses)
+
+    await agent.run("молоко 2 л")
+
+    tools = responses.calls[0]["tools"]
+    assert isinstance(tools, list)
+    assert len(tools) == 2
+    assert tools[0]["server_label"] == "vkusvill"
+    assert tools[1]["server_label"] == "tbank"
+    assert tools[1]["tunnel_id"] == "tunnel_xyz"
+    assert "grocery_checkout" not in tools[1]["allowed_tools"]
 
 
 @pytest.mark.asyncio

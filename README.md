@@ -8,9 +8,11 @@
 найдёт товары во ВкусВилле и соберёт корзину по рецепту.
 Сам рецепт писать не обязательно: достаточно названия блюда.
 
-В ответе бот также формирует короткие поисковые запросы для ручного поиска тех же
-товаров во ВкусВилле внутри приложения Т-Банка. Это не интеграция с Т-Банком и
-не корзина Т-Банка.
+Если настроен T-Bank MCP (см. раздел «T-Bank MCP»), бот дополнительно переносит
+собранную корзину ВкусВилла в корзину Т-Банка: подбирает товары в каталоге
+Т-Банка, добавляет их grocery-тулами и показывает итоговую секцию
+«🛒 Корзина ВкусВилла в Т-Банке». Оформление и оплата заказа Т-Банка
+не выполняются.
 
 ## Архитектура
 
@@ -20,6 +22,8 @@ Telegram
   -> OpenAI Responses API
   -> remote MCP
   -> https://mcp.vkusvill.ru/mcp
+  -> Secure MCP Tunnel (tunnel_id)
+  -> tunnel-client -> tbank-mcp (stdio, local)
 ```
 
 Приложение stateless: без базы данных, Redis, Celery, FastAPI, LangChain, LangGraph и собственного MCP server/client.
@@ -62,7 +66,7 @@ cp .env.example .env
 ```text
 OPENAI_API_KEY=
 TELEGRAM_BOT_TOKEN=
-OPENAI_MODEL=gpt-5-luna
+OPENAI_MODEL=gpt-6-luna
 ```
 
 Опциональные переменные:
@@ -71,6 +75,7 @@ OPENAI_MODEL=gpt-5-luna
 VKUSVILL_MCP_URL=https://mcp.vkusvill.ru/mcp
 VKUSVILL_MCP_SERVER_LABEL=vkusvill
 VKUSVILL_ALLOWED_MCP_TOOLS=vkusvill_products_search,vkusvill_products_discount,vkusvill_product_details,vkusvill_product_analogs,vkusvill_recipes,vkusvill_cart_link_create
+TBANK_TUNNEL_ID=
 TELEGRAM_CONNECT_TIMEOUT=30
 TELEGRAM_READ_TIMEOUT=30
 TELEGRAM_WRITE_TIMEOUT=30
@@ -128,16 +133,67 @@ docker compose up -d
 Ответ содержит:
 
 - ссылку на shared basket ВкусВилла;
-- список выбранных товаров;
-- общий поисковый список для Т-Банка, например `творог 5%; яйца; мука`;
-- отдельные поисковые запросы для каждого товара.
+- список выбранных товаров с полными названиями;
+- при настроенном T-Bank MCP — секцию `🛒 Корзина ВкусВилла в Т-Банке`
+  с товарами, добавленными в корзину Т-Банка, и списком «Не сопоставлено»
+  (товары, для которых не нашлось однозначного соответствия).
+
+## T-Bank MCP
+
+Интеграция использует open-source [tbank-mcp](https://github.com/icyberdeveloper/tbank-mcp) —
+локальный stdio MCP-сервер с grocery-тулами Т-Банка — подключённый ко второму
+MCP tool в OpenAI agent через [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels).
+OpenAI не обращается к localhost напрямую: tunnel-client на вашей машине сам
+запускает `tbank-mcp` и проксирует вызовы по outbound-туннелю.
+
+Через агент доступны только grocery-тулы:
+
+```text
+grocery_stores, grocery_search, grocery_plan_order, grocery_rank,
+grocery_good_info, grocery_add_to_cart, grocery_set_cart, grocery_cart
+```
+
+`grocery_checkout` и инструменты оформления/отмены заказа исключены через
+`allowed_tools`, запрещены промптом и не используются никогда.
+
+### Разовая настройка
+
+1. Установите и залогиньтесь в tbank-mcp (пишет сессию в
+   `~/.local/share/tbank-mcp/session.json`, пароль/PIN не попадает в `.env`):
+
+   ```bash
+   pip install tbank-mcp
+   tbank-mcp-login
+   ```
+
+2. В [Platform tunnel settings](https://platform.openai.com/settings/organization/tunnels)
+   создайте tunnel и скопируйте `tunnel_id` в `TBANK_TUNNEL_ID` в `.env`.
+
+3. Скачайте [tunnel-client](https://github.com/openai/tunnel-client/releases/latest)
+   и запустите его рядом с ботом (нужен runtime API key):
+
+   ```bash
+   export CONTROL_PLANE_API_KEY="sk-..."
+   tunnel-client init --sample sample_mcp_stdio_local --profile local-stdio \
+     --tunnel-id "tunnel_..." --mcp-command "tbank-mcp"
+   tunnel-client run --profile local-stdio
+   ```
+
+4. Запустите бота как обычно. Без `TBANK_TUNNEL_ID` второй MCP tool
+   не добавляется и бот работает только со ВкусВиллом.
+
+Приложение по-прежнему stateless: сессия Т-Банка хранит сам tbank-mcp,
+в коде проекта credentials не передаются.
 
 ## Ограничения
 
 - Бот только создаёт ссылку на корзину.
 - Финальное оформление заказа пользователь делает вручную на стороне ВкусВилла.
-- Поисковые запросы для Т-Банка предназначены только для ручного копирования в
-  поиск; бот не управляет корзиной Т-Банка.
+- Корзину Т-Банка бот заполняет grocery-тулами, но не оформляет и не оплачивает
+  заказ (`grocery_checkout` запрещён). Товары без однозначного соответствия
+  не добавляются и перечисляются в «Не сопоставлено».
+- Shared basket ВкусВилла остаётся основным способом: при недоступности
+  T-Bank MCP бот просто не выводит секцию Т-Банка.
 - Бот не выполняет платежи и не запрашивает платёжные данные.
 - Качество подбора зависит от доступности OpenAI API и официального MCP ВкусВилла.
 - Приложение не хранит историю диалогов.
@@ -179,7 +235,7 @@ OpenAI remote MCP tool используется через Responses API с ко
 }
 ```
 
-Формат сверялся с official OpenAI documentation по Responses API и remote MCP tools: MCP tool имеет `type: "mcp"`, `server_label`, один из `server_url`/`connector_id`, опциональные `allowed_tools` и `require_approval`.
+Формат сверялся с official OpenAI documentation по Responses API и remote MCP tools: MCP tool имеет `type: "mcp"`, `server_label`, один из `server_url`/`connector_id`/`tunnel_id`, опциональные `allowed_tools` и `require_approval`. Второй MCP tool проекта использует `tunnel_id` (Secure MCP Tunnel) для локального stdio-сервера tbank-mcp.
 
 ## Security notes
 
